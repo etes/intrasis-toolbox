@@ -1,0 +1,188 @@
+
+CREATE OR REPLACE FUNCTION update_subclass_metaid(subclassid integer, classid integer, new_metaid integer, subclassname character varying)
+ RETURNS text
+ LANGUAGE plpgsql
+AS $$
+DECLARE
+    rec RECORD;
+    v_definition "Definition"%rowtype;
+    tblspace varchar;
+BEGIN
+    SELECT df."MetaId", scdf."ClassId", df."Name"
+        INTO rec
+        from "Definition" df, "SubClassDef" scdf
+        where df."MetaId" = scdf."MetaId"
+        and scdf."ClassId" = "classid"
+        and df."Name" = "subclassname"
+        and df."MetaId" = "subclassid";
+
+    if not found then
+     raise notice 'The SubClass % could not be found.', 
+	    subclassname;
+     return 'SubClass: ' || subclassname || ' with MetaId ' || subclassid || ' is not found.';
+    else
+        SELECT *
+        INTO v_definition
+        from "Definition" df
+        where df."MetaId" = "new_metaid";
+
+            if not found then
+                -- Get tablespace used for the SubClass PRIMARY KEY
+                SELECT constraint_catalog FROM information_schema.table_constraints
+                    INTO tblspace
+                    WHERE constraint_type = 'PRIMARY KEY' AND table_name = 'SubClassDef';
+                -- Remove Constraints
+                ALTER TABLE "Object" DROP CONSTRAINT fk_object_subclassdef;
+                ALTER TABLE "ObjectDef" DROP CONSTRAINT fk_objectdef_definition;
+                ALTER TABLE "SubClassDef" DROP CONSTRAINT "SubClassDef_pkey";
+                ALTER TABLE "SubClassDef" DROP CONSTRAINT fk_subclassdef_classdef;
+                ALTER TABLE "SubClassDef" DROP CONSTRAINT fk_subclassdef_objectdef;
+                
+                UPDATE "Definition" SET "MetaId" = "new_metaid"
+                    WHERE "MetaId" = "subclassid" AND "Name" = "subclassname";
+                
+                UPDATE "SubClassDef" SET "MetaId" = "new_metaid"
+                    WHERE "MetaId" = "subclassid";
+                
+                UPDATE "Object" SET "SubClassId" = "new_metaid"
+                    WHERE "SubClassId" = "subclassid";
+                
+                UPDATE "ObjectDef" SET "MetaId" = "new_metaid"
+                    WHERE "MetaId" = "subclassid";
+                
+                UPDATE "GeoObjectRule" SET "ObjectDefId" = "new_metaid"
+                    WHERE "ObjectDefId" = "subclassid";
+                
+                UPDATE "DefinitionEventRel" SET "DefinitionId" = "new_metaid"
+                    WHERE "DefinitionId" = "subclassid";
+                
+                UPDATE "AttributeMember" SET "ObjectDefId" = "new_metaid"
+                    WHERE "ObjectDefId" = "subclassid";
+
+                --Restore removed constaints
+                EXECUTE 'ALTER TABLE "SubClassDef" ADD CONSTRAINT "SubClassDef_pkey" 
+                            PRIMARY KEY ("MetaId") USING INDEX TABLESPACE "' || tblspace ||'";'
+                
+                USING tblspace;
+
+                ALTER TABLE "SubClassDef" ADD CONSTRAINT fk_subclassdef_classdef FOREIGN KEY ("ClassId")
+                        REFERENCES public."ClassDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "SubClassDef" ADD CONSTRAINT fk_subclassdef_objectdef FOREIGN KEY ("MetaId")
+                        REFERENCES public."ObjectDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "Object" ADD CONSTRAINT fk_object_subclassdef FOREIGN KEY ("SubClassId")
+                        REFERENCES public."SubClassDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "ObjectDef" ADD CONSTRAINT fk_objectdef_definition FOREIGN KEY ("MetaId")
+                        REFERENCES public."Definition" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;  
+                
+                raise notice 'The SubClass % is found', rec."Name";
+                return 'SubClass: ' || rec."Name" || ' with MetaId: ' || rec."MetaId" || ' is updated with new MetaId: ' || "new_metaid";
+            else
+                raise notice 'MetaId: % already exists', v_definition."MetaId";
+                return 'MetaId: ' || v_definition."MetaId" || ' already exists.';
+            end if;
+    end if;
+COMMIT;
+END $$;
+
+CREATE OR REPLACE FUNCTION update_class_metaid(classid integer, new_metaid integer, classname character varying)
+ RETURNS text
+ LANGUAGE plpgsql
+AS $$
+DECLARE
+    rec RECORD;
+    v_definition "Definition"%rowtype;
+    tblspace varchar;
+BEGIN
+    SELECT df."MetaId", df."Name"
+        INTO rec
+        from "Definition" df, "ClassDef" cdf
+        where df."MetaId" = cdf."MetaId"
+        and df."Name" = "classname"
+        and df."MetaId" = "classid";
+
+    if not found then
+     raise notice 'The Class % could not be found.', 
+	    classname;
+     return 'Class: ' || classname || ' with MetaId ' || classid || ' is not found.';
+    else
+        SELECT *
+        INTO v_definition
+        from "Definition" df
+        where df."MetaId" = "new_metaid";
+
+            if not found then
+                -- Get tablespace used for the SubClass PRIMARY KEY
+                SELECT constraint_catalog FROM information_schema.table_constraints
+                    INTO tblspace
+                    WHERE constraint_type = 'PRIMARY KEY' AND table_name = 'ClassDef';
+                -- Remove Constraints
+                ALTER TABLE "Object" DROP CONSTRAINT fk_object_subclassdef;
+                ALTER TABLE "ObjectDef" DROP CONSTRAINT fk_objectdef_definition;
+                ALTER TABLE "SubClassDef" DROP CONSTRAINT fk_subclassdef_classdef;
+                ALTER TABLE "SubClassDef" DROP CONSTRAINT fk_subclassdef_objectdef;
+                ALTER TABLE "ClassDef" DROP CONSTRAINT fk_classdef_attributedef;
+                ALTER TABLE "ClassDef" DROP CONSTRAINT fk_classdef_definition;
+                ALTER TABLE "ClassDef" DROP CONSTRAINT fk_classdef_infogroupdef;
+                ALTER TABLE "ClassDef" DROP CONSTRAINT fk_classdef_objectdef;
+                
+                UPDATE "Definition" SET "MetaId" = "new_metaid"
+                    WHERE "MetaId" = "subclassid" AND "Name" = "subclassname";
+                
+                UPDATE "SubClassDef" SET "MetaId" = "new_metaid"
+                    WHERE "MetaId" = "subclassid";
+                
+                UPDATE "Object" SET "SubClassId" = "new_metaid"
+                    WHERE "SubClassId" = "subclassid";
+                
+                UPDATE "ObjectDef" SET "MetaId" = "new_metaid"
+                    WHERE "MetaId" = "subclassid";
+                
+                UPDATE "GeoObjectRule" SET "ObjectDefId" = "new_metaid"
+                    WHERE "ObjectDefId" = "subclassid";
+                
+                UPDATE "DefinitionEventRel" SET "DefinitionId" = "new_metaid"
+                    WHERE "DefinitionId" = "subclassid";
+                
+                UPDATE "AttributeMember" SET "ObjectDefId" = "new_metaid"
+                    WHERE "ObjectDefId" = "subclassid";
+
+                --Restore removed constaints
+                EXECUTE 'ALTER TABLE "ClassDef" ADD CONSTRAINT "ClassDef_pkey" 
+                            PRIMARY KEY ("MetaId") USING INDEX TABLESPACE "' || tblspace ||'";'
+                
+                USING tblspace;
+
+                ALTER TABLE "SubClassDef" ADD CONSTRAINT fk_subclassdef_classdef FOREIGN KEY ("ClassId")
+                        REFERENCES public."ClassDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "SubClassDef" ADD CONSTRAINT fk_subclassdef_objectdef FOREIGN KEY ("MetaId")
+                        REFERENCES public."ObjectDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "Object" ADD CONSTRAINT fk_object_subclassdef FOREIGN KEY ("SubClassId")
+                        REFERENCES public."SubClassDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "ObjectDef" ADD CONSTRAINT fk_objectdef_definition FOREIGN KEY ("MetaId")
+                        REFERENCES public."Definition" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;  
+                
+                raise notice 'The Class % is found', rec."Name";
+                return 'Class: ' || rec."Name" || ' with MetaId: ' || rec."MetaId" || ' is updated with new MetaId: ' || "new_metaid";
+            else
+                raise notice 'MetaId: % already exists', v_definition."MetaId";
+                return 'MetaId: ' || v_definition."MetaId" || ' already exists.';
+            end if;
+    end if;
+COMMIT;
+END $$;
