@@ -32,6 +32,7 @@ BEGIN
                     INTO tblspace
                     WHERE constraint_type = 'PRIMARY KEY' AND table_name = 'SubClassDef';
                 -- Remove Constraints
+                ALTER TABLE "AttributeMember" DROP CONSTRAINT fk_attributemember_objectdef;
                 ALTER TABLE "Object" DROP CONSTRAINT fk_object_subclassdef;
                 ALTER TABLE "ObjectDef" DROP CONSTRAINT fk_objectdef_definition;
                 ALTER TABLE "SubClassDef" DROP CONSTRAINT "SubClassDef_pkey";
@@ -62,7 +63,6 @@ BEGIN
                 --Restore removed constaints
                 EXECUTE 'ALTER TABLE "SubClassDef" ADD CONSTRAINT "SubClassDef_pkey" 
                             PRIMARY KEY ("MetaId") USING INDEX TABLESPACE "' || tblspace ||'";'
-                
                 USING tblspace;
 
                 ALTER TABLE "SubClassDef" ADD CONSTRAINT fk_subclassdef_classdef FOREIGN KEY ("ClassId")
@@ -80,7 +80,11 @@ BEGIN
                 ALTER TABLE "ObjectDef" ADD CONSTRAINT fk_objectdef_definition FOREIGN KEY ("MetaId")
                         REFERENCES public."Definition" ("MetaId") MATCH SIMPLE
                         ON UPDATE NO ACTION
-                        ON DELETE NO ACTION;  
+                        ON DELETE NO ACTION;
+                ALTER TABLE "AttributeMember" ADD CONSTRAINT fk_attributemember_objectdef FOREIGN KEY ("ObjectDefId")
+                        REFERENCES public."ObjectDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
                 
                 raise notice 'The SubClass % is found', rec."Name";
                 return 'SubClass: ' || rec."Name" || ' with MetaId: ' || rec."MetaId" || ' is updated with new MetaId: ' || "new_metaid";
@@ -124,42 +128,58 @@ BEGIN
                     INTO tblspace
                     WHERE constraint_type = 'PRIMARY KEY' AND table_name = 'ClassDef';
                 -- Remove Constraints
-                ALTER TABLE "Object" DROP CONSTRAINT fk_object_subclassdef;
+                ALTER TABLE "AttributeMember" DROP CONSTRAINT fk_attributemember_objectdef;
+                ALTER TABLE "SymbolDef" DROP CONSTRAINT fk_symboldef_classdef;
+                ALTER TABLE "RelationRule" DROP CONSTRAINT fk_relationrule_classdef;
+                ALTER TABLE "RelationRule" DROP CONSTRAINT fk_relationrule_classdef1;
+                ALTER TABLE "Object" DROP CONSTRAINT fk_object_classdef;
                 ALTER TABLE "ObjectDef" DROP CONSTRAINT fk_objectdef_definition;
                 ALTER TABLE "SubClassDef" DROP CONSTRAINT fk_subclassdef_classdef;
                 ALTER TABLE "SubClassDef" DROP CONSTRAINT fk_subclassdef_objectdef;
-                ALTER TABLE "ClassDef" DROP CONSTRAINT fk_classdef_attributedef;
-                ALTER TABLE "ClassDef" DROP CONSTRAINT fk_classdef_definition;
-                ALTER TABLE "ClassDef" DROP CONSTRAINT fk_classdef_infogroupdef;
+                ALTER TABLE "ClassDef" DROP CONSTRAINT "ClassDef_pkey";
+                --ALTER TABLE "ClassDef" DROP CONSTRAINT fk_classdef_attributedef;
+                --ALTER TABLE "ClassDef" DROP CONSTRAINT fk_classdef_definition;
                 ALTER TABLE "ClassDef" DROP CONSTRAINT fk_classdef_objectdef;
                 
                 UPDATE "Definition" SET "MetaId" = "new_metaid"
-                    WHERE "MetaId" = "subclassid" AND "Name" = "subclassname";
+                    WHERE "MetaId" = "classid" AND "Name" = "classname";
                 
-                UPDATE "SubClassDef" SET "MetaId" = "new_metaid"
-                    WHERE "MetaId" = "subclassid";
+                UPDATE "ClassDef" SET "MetaId" = "new_metaid"
+                    WHERE "MetaId" = "classid";
                 
-                UPDATE "Object" SET "SubClassId" = "new_metaid"
-                    WHERE "SubClassId" = "subclassid";
+                UPDATE "SubClassDef" SET "ClassId" = "new_metaid"
+                    WHERE "ClassId" = "classid";
+                
+                UPDATE "Object" SET "ClassId" = "new_metaid"
+                    WHERE "ClassId" = "classid";
                 
                 UPDATE "ObjectDef" SET "MetaId" = "new_metaid"
-                    WHERE "MetaId" = "subclassid";
+                    WHERE "MetaId" = "classid";
                 
                 UPDATE "GeoObjectRule" SET "ObjectDefId" = "new_metaid"
-                    WHERE "ObjectDefId" = "subclassid";
+                    WHERE "ObjectDefId" = "classid";
                 
-                UPDATE "DefinitionEventRel" SET "DefinitionId" = "new_metaid"
-                    WHERE "DefinitionId" = "subclassid";
+                UPDATE "RelationRule" SET "ParentId" = "new_metaid"
+                    WHERE "ParentId" = "classid";
+                
+                UPDATE "RelationRule" SET "ChildId" = "new_metaid"
+                    WHERE "ChildId" = "classid";
+                
+                UPDATE "SymbolDef" SET "ClassId" = "new_metaid"
+                    WHERE "ClassId" = "classid";
                 
                 UPDATE "AttributeMember" SET "ObjectDefId" = "new_metaid"
-                    WHERE "ObjectDefId" = "subclassid";
+                    WHERE "ObjectDefId" = "classid";
 
                 --Restore removed constaints
                 EXECUTE 'ALTER TABLE "ClassDef" ADD CONSTRAINT "ClassDef_pkey" 
                             PRIMARY KEY ("MetaId") USING INDEX TABLESPACE "' || tblspace ||'";'
-                
                 USING tblspace;
 
+                ALTER TABLE "ClassDef" ADD CONSTRAINT fk_classdef_objectdef FOREIGN KEY ("MetaId")
+                        REFERENCES public."ObjectDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
                 ALTER TABLE "SubClassDef" ADD CONSTRAINT fk_subclassdef_classdef FOREIGN KEY ("ClassId")
                         REFERENCES public."ClassDef" ("MetaId") MATCH SIMPLE
                         ON UPDATE NO ACTION
@@ -168,14 +188,30 @@ BEGIN
                         REFERENCES public."ObjectDef" ("MetaId") MATCH SIMPLE
                         ON UPDATE NO ACTION
                         ON DELETE NO ACTION;
-                ALTER TABLE "Object" ADD CONSTRAINT fk_object_subclassdef FOREIGN KEY ("SubClassId")
-                        REFERENCES public."SubClassDef" ("MetaId") MATCH SIMPLE
+                ALTER TABLE "Object" ADD CONSTRAINT fk_object_classdef FOREIGN KEY ("ClassId")
+                        REFERENCES public."ClassDef" ("MetaId") MATCH SIMPLE
                         ON UPDATE NO ACTION
                         ON DELETE NO ACTION;
                 ALTER TABLE "ObjectDef" ADD CONSTRAINT fk_objectdef_definition FOREIGN KEY ("MetaId")
                         REFERENCES public."Definition" ("MetaId") MATCH SIMPLE
                         ON UPDATE NO ACTION
-                        ON DELETE NO ACTION;  
+                        ON DELETE NO ACTION;
+                ALTER TABLE "RelationRule" ADD CONSTRAINT fk_relationrule_classdef FOREIGN KEY ("ChildId")
+                        REFERENCES public."ClassDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "RelationRule" ADD CONSTRAINT fk_relationrule_classdef1 FOREIGN KEY ("ParentId")
+                        REFERENCES public."ClassDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "SymbolDef" ADD CONSTRAINT fk_symboldef_classdef FOREIGN KEY ("ClassId")
+                        REFERENCES public."ClassDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "AttributeMember" ADD CONSTRAINT fk_attributemember_objectdef FOREIGN KEY ("ObjectDefId")
+                        REFERENCES public."ObjectDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
                 
                 raise notice 'The Class % is found', rec."Name";
                 return 'Class: ' || rec."Name" || ' with MetaId: ' || rec."MetaId" || ' is updated with new MetaId: ' || "new_metaid";
