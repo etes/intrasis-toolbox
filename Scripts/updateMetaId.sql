@@ -17,9 +17,9 @@ BEGIN
         and df."MetaId" = "subclassid";
 
     if not found then
-     raise notice 'The SubClass % could not be found.', 
+     raise notice 'NOT_FOUND: SubClass % could not be found.', 
 	    subclassname;
-     return 'SubClass: ' || subclassname || ' with MetaId ' || subclassid || ' is not found.';
+     return 'NOT_FOUND: SubClass ' || subclassname || ' with MetaId ' || subclassid || ' is not found.';
     else
         SELECT *
         INTO v_definition
@@ -86,11 +86,11 @@ BEGIN
                         ON UPDATE NO ACTION
                         ON DELETE NO ACTION;
                 
-                raise notice 'The SubClass % is found', rec."Name";
-                return 'SubClass: ' || rec."Name" || ' with MetaId: ' || rec."MetaId" || ' is updated with new MetaId: ' || "new_metaid";
+                raise notice 'UPDATED: SubClass % is found', rec."Name";
+                return 'UPDATED: SubClass ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
             else
-                raise notice 'MetaId: % already exists', v_definition."MetaId";
-                return 'MetaId: ' || v_definition."MetaId" || ' already exists.';
+                raise notice 'EXISTS: MetaId % already exists', v_definition."MetaId";
+                return 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists.';
             end if;
     end if;
 COMMIT;
@@ -113,9 +113,9 @@ BEGIN
         and df."MetaId" = "classid";
 
     if not found then
-     raise notice 'The Class % could not be found.', 
+     raise notice 'NOT_FOUND: Class % could not be found.', 
 	    classname;
-     return 'Class: ' || classname || ' with MetaId ' || classid || ' is not found.';
+     return 'NOT_FOUND: Class ' || classname || ' with MetaId ' || classid || ' is not found.';
     else
         SELECT *
         INTO v_definition
@@ -213,11 +213,11 @@ BEGIN
                         ON UPDATE NO ACTION
                         ON DELETE NO ACTION;
                 
-                raise notice 'The Class % is found', rec."Name";
-                return 'Class: ' || rec."Name" || ' with MetaId: ' || rec."MetaId" || ' is updated with new MetaId: ' || "new_metaid";
+                raise notice 'UPDATED: Class % is found', rec."Name";
+                return 'UPDATED: Class ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
             else
-                raise notice 'MetaId: % already exists', v_definition."MetaId";
-                return 'MetaId: ' || v_definition."MetaId" || ' already exists.';
+                raise notice 'EXISTS: MetaId % already exists', v_definition."MetaId";
+                return 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists.';
             end if;
     end if;
 COMMIT;
