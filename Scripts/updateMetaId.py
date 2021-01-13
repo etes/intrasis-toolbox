@@ -222,6 +222,16 @@ class UpdateMetaId(object):
         my_env["PGPASSWORD"] = str(db_password)
         my_env["PGDATABASE"] = str(db_name)
         
+        update_metaid_functions = os.path.join(__location__, 'updateMetaId.sql')
+        return_msg = runcmd([psql, '-f', update_metaid_functions], my_env)
+        if return_msg[1]:
+            messages.addMessage(
+                "Update MetaId functions created: {}".format(return_msg[1]))
+        else:
+            messages.addErrorMessage(
+                "Update MetaId functions could not be created: {}".format(return_msg))
+            raise arcpy.ExecuteError
+
         fields = [in_metaid, in_name, in_new_metaid, in_new_name, in_classid, in_type]
         updates_data = [dict(zip(fields, row))
                          for row in arcpy.da.SearchCursor(in_excel, fields)]
@@ -231,14 +241,19 @@ class UpdateMetaId(object):
         if subclasses:
             return_messages = []
             for sc in subclasses:
-                update_sql = """SELECT * FROM update_subclass_metaid({0}, {1}, {2}, '{3}')""".format(
-                    str(int(sc[in_metaid])), str(int(sc[in_classid])),
-                    str(int(sc[in_new_metaid])), sc[in_name])
-                
+                if sc[in_new_name] and sc[in_new_name].strip():
+                    update_sql = """SELECT * FROM update_subclass_metaid({0}, {1}, {2}, '{3}', '{4}')""".format(
+                        str(int(sc[in_metaid])), str(int(sc[in_classid])),
+                        str(int(sc[in_new_metaid])), sc[in_name], sc[in_new_name])
+                else:
+                    update_sql = """SELECT * FROM update_subclass_metaid({0}, {1}, {2}, '{3}', '{4}')""".format(
+                        str(int(sc[in_metaid])), str(int(sc[in_classid])),
+                        str(int(sc[in_new_metaid])), sc[in_name], sc[in_name])
+
                 return_msg = runcmd([psql, '-Atc', update_sql], my_env)
                 if return_msg[1]:
                     messages.addMessage(
-                        "{} MetaId ble oppdatert".format(return_msg[1]))
+                        "MetaId ble oppdatert: {}".format(return_msg[1]))
                     return_messages.append("Success: {}".format(return_msg[1]))
                 else:
                     messages.addWarningMessage(
