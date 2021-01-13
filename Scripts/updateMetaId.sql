@@ -1,7 +1,12 @@
 
-CREATE OR REPLACE FUNCTION update_subclass_metaid(subclassid integer, classid integer, new_metaid integer, subclassname character varying)
- RETURNS text
- LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION update_subclass_metaid(
+    subclassid integer,
+    classid integer,
+    new_metaid integer,
+    subclassname character varying,
+    new_name character varying)
+    RETURNS text
+    LANGUAGE plpgsql
 AS $$
 DECLARE
     rec RECORD;
@@ -32,6 +37,7 @@ BEGIN
                     INTO tblspace
                     WHERE constraint_type = 'PRIMARY KEY' AND table_name = 'SubClassDef';
                 -- Remove Constraints
+                ALTER TABLE "DefinitionEventRel" DROP CONSTRAINT fk_definition_defintioneventrel;
                 ALTER TABLE "AttributeMember" DROP CONSTRAINT fk_attributemember_objectdef;
                 ALTER TABLE "Object" DROP CONSTRAINT fk_object_subclassdef;
                 ALTER TABLE "ObjectDef" DROP CONSTRAINT fk_objectdef_definition;
@@ -39,7 +45,7 @@ BEGIN
                 ALTER TABLE "SubClassDef" DROP CONSTRAINT fk_subclassdef_classdef;
                 ALTER TABLE "SubClassDef" DROP CONSTRAINT fk_subclassdef_objectdef;
                 
-                UPDATE "Definition" SET "MetaId" = "new_metaid"
+                UPDATE "Definition" SET "MetaId" = "new_metaid", "Name" = "new_name"
                     WHERE "MetaId" = "subclassid" AND "Name" = "subclassname";
                 
                 UPDATE "SubClassDef" SET "MetaId" = "new_metaid"
@@ -54,11 +60,11 @@ BEGIN
                 UPDATE "GeoObjectRule" SET "ObjectDefId" = "new_metaid"
                     WHERE "ObjectDefId" = "subclassid";
                 
-                UPDATE "DefinitionEventRel" SET "DefinitionId" = "new_metaid"
-                    WHERE "DefinitionId" = "subclassid";
-                
                 UPDATE "AttributeMember" SET "ObjectDefId" = "new_metaid"
                     WHERE "ObjectDefId" = "subclassid";
+                
+                UPDATE "DefinitionEventRel" SET "DefinitionId" = "new_metaid"
+                    WHERE "DefinitionId" = "subclassid";
 
                 --Restore removed constaints
                 EXECUTE 'ALTER TABLE "SubClassDef" ADD CONSTRAINT "SubClassDef_pkey" 
@@ -85,6 +91,10 @@ BEGIN
                         REFERENCES public."ObjectDef" ("MetaId") MATCH SIMPLE
                         ON UPDATE NO ACTION
                         ON DELETE NO ACTION;
+                ALTER TABLE "DefinitionEventRel" ADD CONSTRAINT fk_definition_defintioneventrel FOREIGN KEY ("DefinitionId")
+                        REFERENCES public."Definition" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
                 
                 raise notice 'UPDATED: SubClass % is found', rec."Name";
                 return 'UPDATED: SubClass ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
@@ -96,9 +106,13 @@ BEGIN
 COMMIT;
 END $$;
 
-CREATE OR REPLACE FUNCTION update_class_metaid(classid integer, new_metaid integer, classname character varying)
- RETURNS text
- LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION update_class_metaid(
+    classid integer,
+    new_metaid integer,
+    classname character varying,
+    new_name character varying)
+    RETURNS text
+    LANGUAGE plpgsql
 AS $$
 DECLARE
     rec RECORD;
@@ -141,7 +155,7 @@ BEGIN
                 --ALTER TABLE "ClassDef" DROP CONSTRAINT fk_classdef_definition;
                 ALTER TABLE "ClassDef" DROP CONSTRAINT fk_classdef_objectdef;
                 
-                UPDATE "Definition" SET "MetaId" = "new_metaid"
+                UPDATE "Definition" SET "MetaId" = "new_metaid", "Name" = "new_name"
                     WHERE "MetaId" = "classid" AND "Name" = "classname";
                 
                 UPDATE "ClassDef" SET "MetaId" = "new_metaid"
@@ -170,6 +184,9 @@ BEGIN
                 
                 UPDATE "AttributeMember" SET "ObjectDefId" = "new_metaid"
                     WHERE "ObjectDefId" = "classid";
+                
+                UPDATE "DefinitionEventRel" SET "DefinitionId" = "new_metaid"
+                    WHERE "DefinitionId" = "classid";
 
                 --Restore removed constaints
                 EXECUTE 'ALTER TABLE "ClassDef" ADD CONSTRAINT "ClassDef_pkey" 
@@ -210,6 +227,10 @@ BEGIN
                         ON DELETE NO ACTION;
                 ALTER TABLE "AttributeMember" ADD CONSTRAINT fk_attributemember_objectdef FOREIGN KEY ("ObjectDefId")
                         REFERENCES public."ObjectDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "DefinitionEventRel" ADD CONSTRAINT fk_definition_defintioneventrel FOREIGN KEY ("DefinitionId")
+                        REFERENCES public."Definition" ("MetaId") MATCH SIMPLE
                         ON UPDATE NO ACTION
                         ON DELETE NO ACTION;
                 
