@@ -144,13 +144,13 @@ class UpdateMetaId(object):
         in_new_name.value = "New_Name"
 
         in_classid = arcpy.Parameter(
-            displayName="ClassId Field",
+            displayName="SubClass_ClassId Field",
             name="in_classid",
             datatype="Field",
             parameterType="Required",
             direction="Input")
         in_classid.parameterDependencies = [in_excel.name]
-        in_classid.description = "Input ClassId field"
+        in_classid.description = "Input SubClass ClassId field"
         in_classid.value = "SubClass_ClassId"
 
         in_type = arcpy.Parameter(
@@ -253,15 +253,56 @@ class UpdateMetaId(object):
                 return_msg = runcmd([psql, '-Atc', update_sql], my_env)
                 if return_msg[1]:
                     messages.addMessage(
-                        "MetaId ble oppdatert: {}".format(return_msg[1]))
+                        "SubClass MetaId is updated: {}".format(return_msg[1]))
                     return_messages.append("Success: {}".format(return_msg[1]))
                 else:
                     messages.addWarningMessage(
-                        "Ingen MetaId ble oppdatert: {}".format(return_msg))
+                        "SubClass MetaId is not updated: {}".format(return_msg))
                     return_messages.append("Error: {}".format(return_msg[1]))
         
         classes = list(filter(lambda d: d[in_type] == 'Class', updates_data))
+        if classes:
+            return_messages = []
+            for cl in classes:
+                if cl[in_new_name] and cl[in_new_name].strip():
+                    update_sql = """SELECT * FROM update_class_metaid({0}, {1}, '{2}', '{3}')""".format(
+                        str(int(cl[in_metaid])), str(int(cl[in_new_metaid])), cl[in_name], cl[in_new_name])
+                else:
+                    update_sql = """SELECT * FROM update_class_metaid({0}, {1}, '{2}', '{3}')""".format(
+                        str(int(cl[in_metaid])), str(int(cl[in_new_metaid])), cl[in_name], cl[in_name])
+
+                return_msg = runcmd([psql, '-Atc', update_sql], my_env)
+                if return_msg[1]:
+                    messages.addMessage(
+                        "Class MetaId is updated: {}".format(return_msg[1]))
+                    return_messages.append("Success: {}".format(return_msg[1]))
+                else:
+                    messages.addWarningMessage(
+                        "Class MetaId is not updated: {}".format(return_msg))
+                    return_messages.append("Error: {}".format(return_msg[1]))
+        
+        # Filter RelationTypes
         relation_types = list(
             filter(lambda d: d[in_type] == 'RelationType', updates_data))
+        
+        if relation_types:
+            return_messages = []
+            for rt in relation_types:
+                if rt[in_new_name] and rt[in_new_name].strip():
+                    update_sql = """SELECT * FROM update_relationtype_metaid({0}, {1}, '{2}', '{3}')""".format(
+                        str(int(rt[in_metaid])), str(int(rt[in_new_metaid])), rt[in_name], rt[in_new_name])
+                else:
+                    update_sql = """SELECT * FROM update_relationtype_metaid({0}, {1}, '{2}', '{3}')""".format(
+                        str(int(rt[in_metaid])), str(int(rt[in_new_metaid])), rt[in_name], rt[in_name])
+
+                return_msg = runcmd([psql, '-Atc', update_sql], my_env)
+                if return_msg[1]:
+                    messages.addMessage(
+                        "RelationType MetaId is updated: {}".format(return_msg[1]))
+                    return_messages.append("Success: {}".format(return_msg[1]))
+                else:
+                    messages.addWarningMessage(
+                        "RelationType MetaId is not updated: {}".format(return_msg))
+                    return_messages.append("Error: {}".format(return_msg[1]))
 
         return
