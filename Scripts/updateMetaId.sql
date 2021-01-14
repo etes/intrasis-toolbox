@@ -32,7 +32,7 @@ BEGIN
         where df."MetaId" = "new_metaid";
 
             if not found then
-                -- Get tablespace used for the SubClass PRIMARY KEY
+                -- Get tablespace used for the SubClassDef PRIMARY KEY
                 SELECT constraint_catalog FROM information_schema.table_constraints
                     INTO tblspace
                     WHERE constraint_type = 'PRIMARY KEY' AND table_name = 'SubClassDef';
@@ -137,11 +137,12 @@ BEGIN
         where df."MetaId" = "new_metaid";
 
             if not found then
-                -- Get tablespace used for the SubClass PRIMARY KEY
+                -- Get tablespace used for the ClassDef PRIMARY KEY
                 SELECT constraint_catalog FROM information_schema.table_constraints
                     INTO tblspace
                     WHERE constraint_type = 'PRIMARY KEY' AND table_name = 'ClassDef';
                 -- Remove Constraints
+                ALTER TABLE "DefinitionEventRel" DROP CONSTRAINT fk_definition_defintioneventrel;
                 ALTER TABLE "AttributeMember" DROP CONSTRAINT fk_attributemember_objectdef;
                 ALTER TABLE "SymbolDef" DROP CONSTRAINT fk_symboldef_classdef;
                 ALTER TABLE "RelationRule" DROP CONSTRAINT fk_relationrule_classdef;
@@ -236,6 +237,87 @@ BEGIN
                 
                 raise notice 'UPDATED: Class % is found', rec."Name";
                 return 'UPDATED: Class ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
+            else
+                raise notice 'EXISTS: MetaId % already exists', v_definition."MetaId";
+                return 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists.';
+            end if;
+    end if;
+COMMIT;
+END $$;
+
+CREATE OR REPLACE FUNCTION update_relationtype_metaid(
+    relationtypeid integer,
+    new_metaid integer,
+    relationtypename character varying,
+    new_name character varying)
+    RETURNS text
+    LANGUAGE plpgsql
+AS $$
+DECLARE
+    rec RECORD;
+    v_definition "Definition"%rowtype;
+    tblspace varchar;
+BEGIN
+    SELECT df."MetaId", df."Name"
+        INTO rec
+        from "Definition" df, "RelationTypeDef" rtdf
+        where df."MetaId" = rtdf."MetaId"
+        and df."Name" = "relationtypename"
+        and df."MetaId" = "relationtypeid";
+
+    if not found then
+     raise notice 'NOT_FOUND: RelationType % could not be found.', 
+	    relationtypename;
+     return 'NOT_FOUND: RelationType ' || relationtypename || ' with MetaId ' || relationtypeid || ' is not found.';
+    else
+        SELECT *
+        INTO v_definition
+        from "Definition" df
+        where df."MetaId" = "new_metaid";
+
+            if not found then
+                -- Get tablespace used for the RelationTypeDef PRIMARY KEY
+                SELECT constraint_catalog FROM information_schema.table_constraints
+                    INTO tblspace
+                    WHERE constraint_type = 'PRIMARY KEY' AND table_name = 'RelationTypeDef';
+                -- Remove Constraints
+                ALTER TABLE "DefinitionEventRel" DROP CONSTRAINT fk_definition_defintioneventrel;
+                ALTER TABLE "RelationDef" DROP CONSTRAINT fk_relationdef_relationtypedef;
+                ALTER TABLE "RelationTypeDef" DROP CONSTRAINT "RelationTypeDef_pkey";
+                ALTER TABLE "RelationTypeDef" DROP CONSTRAINT fk_relationtypedef_definition;
+                
+                UPDATE "Definition" SET "MetaId" = "new_metaid", "Name" = "new_name"
+                    WHERE "MetaId" = "relationtypeid" AND "Name" = "relationtypename";
+                
+                UPDATE "RelationTypeDef" SET "MetaId" = "new_metaid", "Label" = "new_name"
+                    WHERE "MetaId" = "relationtypeid";
+                
+                UPDATE "RelationDef" SET "RelationTypeDefId" = "new_metaid"
+                    WHERE "RelationTypeDefId" = "relationtypeid";
+                
+                UPDATE "DefinitionEventRel" SET "DefinitionId" = "new_metaid"
+                    WHERE "DefinitionId" = "relationtypeid";
+
+                --Restore removed constaints
+                EXECUTE 'ALTER TABLE "RelationTypeDef" ADD CONSTRAINT "RelationTypeDef_pkey" 
+                            PRIMARY KEY ("MetaId") USING INDEX TABLESPACE "' || tblspace ||'";'
+                USING tblspace;
+
+                ALTER TABLE "RelationTypeDef" ADD CONSTRAINT fk_relationtypedef_definition FOREIGN KEY ("MetaId")
+                        REFERENCES public."Definition" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "RelationDef" ADD CONSTRAINT fk_relationdef_relationtypedef FOREIGN KEY ("RelationTypeDefId")
+                        REFERENCES public."RelationTypeDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "DefinitionEventRel" ADD CONSTRAINT fk_definition_defintioneventrel FOREIGN KEY ("DefinitionId")
+                        REFERENCES public."Definition" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                
+                raise notice 'UPDATED: RelationType % is found', rec."Name";
+                return 'UPDATED: RelationType ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
             else
                 raise notice 'EXISTS: MetaId % already exists', v_definition."MetaId";
                 return 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists.';
