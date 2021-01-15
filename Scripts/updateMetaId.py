@@ -28,10 +28,10 @@ my_env["PGPORT"] = '5432'
 
 
 def runcmd(cmd, env):
-      """
+        """
         A generic subprocess.Popen function to run a command which suppresses consoles on Windows
         """
-       if os.name == 'nt':
+        if os.name == 'nt':
             #Windows starts up a console when a subprocess is run from a non-console
             #app like pythonw unless we pass it a flag that says not to...
             startupinfo = subprocess.STARTUPINFO()
@@ -184,7 +184,7 @@ class UpdateMetaId(object):
             log_folder, 'updateMetaId_' + str(db_name) + '.log')
         messages.addMessage('Log file will be saved to: {}'.format(log_file))
         return_messages = []
-        
+
         update_metaid_functions = os.path.join(
             __location__, 'updateMetaId.sql')
         return_msg = runcmd([psql, '-f', update_metaid_functions], my_env)

@@ -29,10 +29,10 @@ my_env["PGPORT"] = '5432'
 
 
 def runcmd(cmd, env):
-    """
+        """
         A generic subprocess.Popen function to run a command which suppresses consoles on Windows
         """
-       if os.name == 'nt':
+        if os.name == 'nt':
             #Windows starts up a console when a subprocess is run from a non-console
             #app like pythonw unless we pass it a flag that says not to...
             startupinfo = subprocess.STARTUPINFO()
