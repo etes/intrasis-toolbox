@@ -37,7 +37,7 @@ def runcmd(cmd, env):
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= 1
         else:
-             startupinfo = None
+            startupinfo = None
         proc = subprocess.Popen(cmd, env=env, startupinfo=startupinfo,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 stdin=subprocess.PIPE)
@@ -175,7 +175,7 @@ class UpdateMetaId(object):
 
         psql = "C:\\Program Files\\PostgreSQL\\{0}\\bin\\psql.exe".format(
                pg_version)
-
+        
         my_env["PGUSER"] = str(db_user)
         my_env["PGPASSWORD"] = str(db_password)
         my_env["PGDATABASE"] = str(db_name)
@@ -184,9 +184,8 @@ class UpdateMetaId(object):
             log_folder, 'updateMetaId_' + str(db_name) + '.log')
         messages.addMessage('Log file will be saved to: {}'.format(log_file))
         return_messages = []
-
-        update_metaid_functions = os.path.join(
-            __location__, 'updateMetaId.sql')
+        
+        update_metaid_functions = os.path.join(__location__, 'updateMetaId.sql')
         return_msg = runcmd([psql, '-f', update_metaid_functions], my_env)
         if return_msg[1]:
             messages.addMessage(

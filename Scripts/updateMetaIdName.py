@@ -38,12 +38,12 @@ def runcmd(cmd, env):
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= 1
         else:
-               startupinfo = None
+            startupinfo = None
         proc = subprocess.Popen(cmd, env=env, startupinfo=startupinfo,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 stdin=subprocess.PIPE)
         if os.name == 'nt':
-              proc.stdin.close()
+            proc.stdin.close()
         stdout, stderr = proc.communicate()
         exit_code = proc.wait()
         return exit_code, stdout, stderr
