@@ -27,22 +27,22 @@ my_env["PGHOST"] = 'localhost'
 my_env["PGPORT"] = '5432'
 
 
-def runcmd(cmd, env):  
-        """ 
+def runcmd(cmd, env):
+        """
         A generic subprocess.Popen function to run a command which suppresses consoles on Windows
-        """  
-        if os.name=='nt':  
-            #Windows starts up a console when a subprocess is run from a non-console  
-            #app like pythonw unless we pass it a flag that says not to...  
-            startupinfo=subprocess.STARTUPINFO()  
-            startupinfo.dwFlags |= 1              
-        else:startupinfo=None  
-        proc=subprocess.Popen(cmd, env=env, startupinfo=startupinfo,  
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,  
-                            stdin=subprocess.PIPE)  
-        if os.name=='nt':proc.stdin.close()  
-        stdout,stderr=proc.communicate()  
-        exit_code=proc.wait()  
+        """
+        if os.name=='nt':
+            #Windows starts up a console when a subprocess is run from a non-console
+            #app like pythonw unless we pass it a flag that says not to...
+            startupinfo=subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= 1
+        else:startupinfo=None
+        proc=subprocess.Popen(cmd, env=env, startupinfo=startupinfo,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            stdin=subprocess.PIPE)
+        if os.name=='nt':proc.stdin.close()
+        stdout,stderr=proc.communicate()
+        exit_code=proc.wait()
         return exit_code, stdout, stderr
 
 
@@ -55,7 +55,7 @@ class UpdateCoordSys(object):
 
     def getParameterInfo(self):
         """Define parameter definitions"""
-        
+
         pg_version = arcpy.Parameter(
             displayName="Select PostgreSQL version",
             name="pg_version",
@@ -88,7 +88,7 @@ class UpdateCoordSys(object):
             parameterType="Required",
             direction="Input")
         db_name.parameterDependencies = [pg_version.name, db_user.name, db_password.name]
-                
+
         params = [pg_version, db_user, db_password, db_name]
         return params
 
@@ -113,7 +113,7 @@ class UpdateCoordSys(object):
             args = [psql, '-Atc', 'select datname from pg_database']
             return_message = runcmd(args, my_env)
             parameters[3].filter.list = return_message[1].split()
-        else:  
+        else:
             parameters[3].filter.list = []
         
         return
@@ -138,19 +138,31 @@ class UpdateCoordSys(object):
         my_env["PGPASSWORD"] = str(db_password)
         my_env["PGDATABASE"]= str(db_name)
 
-        srid_null = 'select count(st_srid(the_geom)) from "GeoObject" where st_srid(the_geom) = 0'
-        geobject_total = 'select count(*) from "GeoObject"'
+        srid_null = """select count(st_srid(the_geom)) from "GeoObject" where st_srid(the_geom) = 0;"""
+        geobject_total = """select count(*) from "GeoObject";"""
         return_msg_srid_null = runcmd([psql, '-Atc', srid_null], my_env)
         return_msg_total = runcmd([psql, '-Atc', geobject_total], my_env)
-        messages.addMessage("{0} geometrier av {1} uten koordinat system ".format(return_msg_srid_null[1], return_msg_total[1]))
-        args_srid = [psql, '-Atc', 'select c."Value"::integer from public."Object" a\
-                inner join public."Attribute" b on a."ObjectId"=b."ObjectId"\
-                inner join public."AttributeValue" c on b."AttributeId"=c."AttributeId"\
-                    where a."ClassId"=4 and b."MetaId"=489']
-        return_msg_srid = runcmd(args_srid, my_env)
+        messages.addMessage(
+            "{0} geometries of {1} hav no coordinate system.".format(
+                return_msg_srid_null[1].strip(), return_msg_total[1].strip()))
+        get_srid_sql = """SELECT c."Value"::integer FROM public."Object" a
+                INNER JOIN public."Attribute" b on a."ObjectId"=b."ObjectId"
+                INNER JOIN public."AttributeValue" c on b."AttributeId"=c."AttributeId"
+                WHERE a."ClassId"=4 and b."MetaId"=489;"""
+        return_msg_srid = runcmd([psql, '-Atc', get_srid_sql], my_env)
         if return_msg_srid[1]:
-            messages.addMessage("SRID: {0} ".format(return_msg_srid[1]))
+            update_srid_sql = """UPDATE public."GeoObject"
+                SET the_geom = st_setsrid(the_geom, {})
+                WHERE st_srid(the_geom) = 0;""".format(return_msg_srid[1].strip())
+            messages.addMessage("Update SQL: {}".format(update_srid_sql))
+            return_msg_update = runcmd([psql, '-Atc', update_srid_sql], my_env)
+            if return_msg_update[1]:
+                messages.addMessage(
+                    "SUCCESS: Geometries SRID updated: {}".format(return_msg_update[1]))
+            else:
+                messages.addWarningMessage(
+                    "ERROR: Geometries SRID could not be updated {}".format(return_msg_update[1]))
         else:
-            messages.setErrorMessage("Intrasis prosjektet har ikke koordinat system (srid)")
+            messages.setErrorMessage("The Intrasis project does not have a valid coordinate system (SRID)")
         return
 
