@@ -13,41 +13,17 @@
 import arcpy
 import os
 import sys
-import subprocess
 import tempfile
+from utils import runcmd
+
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
 #global variables
-#Path to psql """
-#psql = 'C:\\Program Files\\PostgreSQL\\9.6\\bin\\psql.exe'
 #set environment variables for Postgresql
 my_env = os.environ.copy()
-#my_env["PATH"] = "C:\\Program Files\\PostgreSQL\\9.6\\bin" + os.pathsep + my_env["PATH"]
-my_env["PGHOST"] = 'localhost'
-my_env["PGPORT"] = '5432'
-
-
-def runcmd(cmd, env):
-        """
-        A generic subprocess.Popen function to run a command which suppresses consoles on Windows
-        """
-        if os.name == 'nt':
-            #Windows starts up a console when a subprocess is run from a non-console
-            #app like pythonw unless we pass it a flag that says not to...
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= 1
-        else:
-            startupinfo = None
-        proc = subprocess.Popen(cmd, env=env, startupinfo=startupinfo,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                stdin=subprocess.PIPE)
-        if os.name == 'nt':
-            proc.stdin.close()
-        stdout, stderr = proc.communicate()
-        exit_code = proc.wait()
-        return exit_code, stdout, stderr
-
+my_env["PGHOST"] = "localhost"
+my_env["PGPORT"] = "5432"
 
 class UpdateMetaIdName(object):
     def __init__(self):
@@ -133,15 +109,12 @@ class UpdateMetaIdName(object):
         if parameters[0].valueAsText:
             pg_version = parameters[0].valueAsText
             psql = "C:\\Program Files\\PostgreSQL\\{0}\\bin\\psql.exe".format(
-                   pg_version)
-            if not os.path.isfile(psql):
-                self.params[0].setErrorMessage("PostgreSQL version is invalid \
-                    Please select the correct PostgreSQL version.")
+                pg_version)
 
         if parameters[1].value and parameters[2].value:
             my_env["PGUSER"] = str(parameters[1].value)
             my_env["PGPASSWORD"] = str(parameters[2].value)
-            args = [psql, '-Atc', 'select datname from pg_database']
+            args = [psql, "-Atc", "select datname from pg_database"]
             return_message = runcmd(args, my_env)
             parameters[3].filter.list = return_message[1].split()
         else:
@@ -152,6 +125,13 @@ class UpdateMetaIdName(object):
     def updateMessages(self, parameters):
         """Modify the messages created by internal validation for each tool
         parameter.  This method is called after internal validation."""
+        if parameters[0].valueAsText:
+            pg_version = parameters[0].valueAsText
+            psql = "C:\\Program Files\\PostgreSQL\\{0}\\bin\\psql.exe".format(
+                pg_version)
+            if not os.path.isfile(psql):
+                parameters[0].setErrorMessage("PostgreSQL version is invalid \
+                    Please select the correct PostgreSQL version.")
         return
 
     def execute(self, parameters, messages):
@@ -163,9 +143,9 @@ class UpdateMetaIdName(object):
         db_name = parameters[3].valueAsText
         in_excel = parameters[4].valueAsText
         log_folder = parameters[5].valueAsText
-        in_metaid = 'MetaId'
-        in_old_name = 'Name'
-        in_new_name = 'New_Name'
+        in_metaid = "MetaId"
+        in_old_name = "Name"
+        in_new_name = "New_Name"
 
         psql = "C:\\Program Files\\PostgreSQL\\{0}\\bin\\psql.exe".format(
                pg_version)
@@ -175,8 +155,8 @@ class UpdateMetaIdName(object):
         my_env["PGDATABASE"] = str(db_name)
 
         log_file = os.path.join(
-            log_folder, 'updateMetaIdName_' + str(db_name) + '.log')
-        messages.addMessage('Log file will be saved to: {}'.format(log_file))
+            log_folder, "updateMetaIdName_" + str(db_name) + ".log")
+        messages.addMessage("Log file will be saved to: {}".format(log_file))
         return_messages = []
 
         fields = [in_metaid, in_old_name, in_new_name]
@@ -187,12 +167,13 @@ class UpdateMetaIdName(object):
 
         select_sql = """SELECT "MetaId", "Name" FROM public."Definition", 
             (VALUES {}) AS update_payload (metaid, old_name, new_name)
-            WHERE "MetaId" = update_payload.metaid::INTEGER AND "Name" = update_payload.old_name""".format(updates_data_str)
+            WHERE "MetaId" = update_payload.metaid::INTEGER 
+            AND "Name" = update_payload.old_name""".format(updates_data_str)
         fd, filepath = tempfile.mkstemp(suffix=".sql")
         try:
             with os.fdopen(fd, "w") as f:
                 f.write(select_sql)
-            return_msg = runcmd([psql, '-f', filepath], my_env)
+            return_msg = runcmd([psql, "-f", filepath], my_env)
             if return_msg[1]:
                 messages.addMessage(
                     "MetaId Names update that will run: {}".format(return_msg[1]))
@@ -209,13 +190,14 @@ class UpdateMetaIdName(object):
         update_sql = """UPDATE public."Definition"
             SET "Name" = update_payload.new_name
             FROM (VALUES {}) AS update_payload (metaid, old_name, new_name)
-            WHERE "MetaId" = update_payload.metaid::INTEGER AND "Name" = update_payload.old_name""".format(updates_data_str)
+            WHERE "MetaId" = update_payload.metaid::INTEGER 
+            AND "Name" = update_payload.old_name""".format(updates_data_str)
 
         updater_file, updater_filepath = tempfile.mkstemp(suffix=".sql")
         try:
             with os.fdopen(updater_file, "w") as f:
                 f.write(update_sql)
-            return_msg = runcmd([psql, '-f', updater_filepath], my_env)
+            return_msg = runcmd([psql, "-f", updater_filepath], my_env)
             if return_msg[1]:
                 messages.addMessage(
                     "MetaId Names update has run: {}".format(return_msg[1]))
@@ -231,5 +213,5 @@ class UpdateMetaIdName(object):
 
         with open(log_file, "w") as f:
             for msg in return_messages:
-                f.write('%s\n' % msg)
+                f.write("%s\n" % msg)
         return

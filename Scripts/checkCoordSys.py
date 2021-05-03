@@ -14,36 +14,16 @@ import os
 import sys
 import subprocess
 import csv
+from utils import runcmd
+
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
 #global variables
-#Path to psql """
-#psql = 'C:\\Program Files\\PostgreSQL\\9.6\\bin\\psql.exe'
 #set environment variables for Postgresql
 my_env = os.environ.copy()
-#my_env["PATH"] = "C:\\Program Files\\PostgreSQL\\9.6\\bin" + os.pathsep + my_env["PATH"]
 my_env["PGHOST"] = 'localhost'
 my_env["PGPORT"] = '5432'
-
-
-def runcmd(cmd, env):  
-        """ 
-        A generic subprocess.Popen function to run a command which suppresses consoles on Windows
-        """  
-        if os.name=='nt':  
-            #Windows starts up a console when a subprocess is run from a non-console  
-            #app like pythonw unless we pass it a flag that says not to...  
-            startupinfo=subprocess.STARTUPINFO()  
-            startupinfo.dwFlags |= 1              
-        else:startupinfo=None  
-        proc=subprocess.Popen(cmd, env=env, startupinfo=startupinfo,  
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,  
-                            stdin=subprocess.PIPE)  
-        if os.name=='nt':proc.stdin.close()  
-        stdout,stderr=proc.communicate()  
-        exit_code=proc.wait()  
-        return exit_code, stdout, stderr
 
 
 class CheckCoordSys(object):
@@ -65,7 +45,7 @@ class CheckCoordSys(object):
         in_csv.filter.list = ['txt', 'csv']
         in_csv.description = "Input csv file containing IntrasisIds"
         """
-        
+
         pg_version = arcpy.Parameter(
             displayName="Select PostgreSQL version",
             name="pg_version",
@@ -98,7 +78,7 @@ class CheckCoordSys(object):
             parameterType="Required",
             direction="Input")
         db_name.parameterDependencies = [pg_version.name, db_user.name, db_password.name]
-        
+
         params = [pg_version, db_user, db_password, db_name]
         return params
 
@@ -110,26 +90,32 @@ class CheckCoordSys(object):
         """Modify the values and properties of parameters before internal
         validation is performed.  This method is called whenever a parameter
         has been changed."""
+
         if parameters[0].valueAsText:
             pg_version = parameters[0].valueAsText
-            psql = "C:\\Program Files\\PostgreSQL\\{0}\\bin\\psql.exe".format(pg_version)
-            if not os.path.isfile(psql):
-                self.params[0].setErrorMessage("PostgreSQL version is invalid \
-                    Please select the correct PostgreSQL version.")
-        
+            psql = "C:\\Program Files\\PostgreSQL\\{0}\\bin\\psql.exe".format(
+                pg_version)
+
         if parameters[1].value and parameters[2].value:
             my_env["PGUSER"] = str(parameters[1].value)
             my_env["PGPASSWORD"] = str(parameters[2].value)
-            args = [psql, '-Atc', 'select datname from pg_database']
+            args = [psql, "-Atc", "select datname from pg_database"]
             return_message = runcmd(args, my_env)
-            parameters[3].filter.list = return_message[1].split()  
-        else:  
-            parameters[3].filter.list = []  
+            parameters[3].filter.list = return_message[1].split()
+        else:
+            parameters[3].filter.list = []
         return
 
     def updateMessages(self, parameters):
         """Modify the messages created by internal validation for each tool
         parameter.  This method is called after internal validation."""
+        if parameters[0].valueAsText:
+            pg_version = parameters[0].valueAsText
+            psql = "C:\\Program Files\\PostgreSQL\\{0}\\bin\\psql.exe".format(
+                pg_version)
+            if not os.path.isfile(psql):
+                parameters[0].setErrorMessage("PostgreSQL version is invalid \
+                    Please select the correct PostgreSQL version.")
         return
 
     def execute(self, parameters, messages):
@@ -142,15 +128,17 @@ class CheckCoordSys(object):
         db_name = parameters[3].valueAsText
 
         psql = "C:\\Program Files\\PostgreSQL\\{0}\\bin\\psql.exe".format(pg_version)
-        
+
         my_env["PGUSER"] = str(db_user)
         my_env["PGPASSWORD"] = str(db_password)
         my_env["PGDATABASE"]= str(db_name)
 
-        srid_null = 'select count(st_srid(the_geom)) from "GeoObject" where st_srid(the_geom) = 0'
-        geobject_total = 'select count(*) from "GeoObject"'
+        srid_null = ("""select count(st_srid(the_geom)) """
+                    """from "GeoObject" where st_srid(the_geom) = 0;""")
+        geobject_total = """select count(*) from "GeoObject";"""
         return_msg_srid = runcmd([psql, '-Atc', srid_null], my_env)
         return_msg_total = runcmd([psql, '-Atc', geobject_total], my_env)
-        messages.addMessage("{0} geometrier av {1} uten koordinat system ".format(return_msg_srid[1], return_msg_total[1]))
+        messages.addMessage(
+            """{0} geometrier av {1} uten koordinat system
+            """.format(return_msg_srid[1], return_msg_total[1]))
         return
-

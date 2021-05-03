@@ -15,6 +15,8 @@ import os
 import sys
 import subprocess
 import tempfile
+from utils import runcmd
+
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
@@ -23,29 +25,8 @@ __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 #set environment variables for Postgresql
 my_env = os.environ.copy()
-my_env["PGHOST"] = 'localhost'
-my_env["PGPORT"] = '5432'
-
-
-def runcmd(cmd, env):
-        """
-        A generic subprocess.Popen function to run a command which suppresses consoles on Windows
-        """
-        if os.name == 'nt':
-            #Windows starts up a console when a subprocess is run from a non-console
-            #app like pythonw unless we pass it a flag that says not to...
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= 1
-        else:
-            startupinfo = None
-        proc = subprocess.Popen(cmd, env=env, startupinfo=startupinfo,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                stdin=subprocess.PIPE)
-        if os.name == 'nt':
-            proc.stdin.close()
-        stdout, stderr = proc.communicate()
-        exit_code = proc.wait()
-        return exit_code, stdout, stderr
+my_env["PGHOST"] = "localhost"
+my_env["PGPORT"] = "5432"
 
 
 class UpdateMetaId(object):
@@ -109,7 +90,8 @@ class UpdateMetaId(object):
             datatype="DETable",
             parameterType="Required",
             direction="Input")
-        in_excel.description = "Excel file containing the fields metaid, old name and new name"
+        in_excel.description = """Excel file containing the fields 
+            MetaId, Name, New_MetaId, New_Name, SubClass_ClassId, and Type"""
 
         log_folder = arcpy.Parameter(
             displayName="Output Log Folder",
@@ -136,15 +118,12 @@ class UpdateMetaId(object):
         if parameters[0].valueAsText:
             pg_version = parameters[0].valueAsText
             psql = "C:\\Program Files\\PostgreSQL\\{0}\\bin\\psql.exe".format(
-                   pg_version)
-            if not os.path.isfile(psql):
-                self.params[0].setErrorMessage("PostgreSQL version is invalid \
-                    Please select the correct PostgreSQL version.")
+                pg_version)
 
         if parameters[1].value and parameters[2].value:
             my_env["PGUSER"] = str(parameters[1].value)
             my_env["PGPASSWORD"] = str(parameters[2].value)
-            args = [psql, '-Atc', 'select datname from pg_database']
+            args = [psql, "-Atc", "select datname from pg_database"]
             return_message = runcmd(args, my_env)
             parameters[3].filter.list = return_message[1].split()
         else:
@@ -155,6 +134,13 @@ class UpdateMetaId(object):
     def updateMessages(self, parameters):
         """Modify the messages created by internal validation for each tool
         parameter.  This method is called after internal validation."""
+        if parameters[0].valueAsText:
+            pg_version = parameters[0].valueAsText
+            psql = "C:\\Program Files\\PostgreSQL\\{0}\\bin\\psql.exe".format(
+                pg_version)
+            if not os.path.isfile(psql):
+                parameters[0].setErrorMessage("PostgreSQL version is invalid \
+                    Please select the correct PostgreSQL version.")
         return
 
     def execute(self, parameters, messages):
@@ -166,27 +152,27 @@ class UpdateMetaId(object):
         db_name = parameters[3].valueAsText
         in_excel = parameters[4].valueAsText
         log_folder = parameters[5].valueAsText
-        in_metaid = 'MetaId'
-        in_name = 'Name'
-        in_new_metaid = 'New_MetaId'
-        in_new_name = 'New_Name'
-        in_classid = 'SubClass_ClassId'
-        in_type = 'Type'
+        in_metaid = "MetaId"
+        in_name = "Name"
+        in_new_metaid = "New_MetaId"
+        in_new_name = "New_Name"
+        in_classid = "SubClass_ClassId"
+        in_type = "Type"
 
         psql = "C:\\Program Files\\PostgreSQL\\{0}\\bin\\psql.exe".format(
                pg_version)
-        
+
         my_env["PGUSER"] = str(db_user)
         my_env["PGPASSWORD"] = str(db_password)
         my_env["PGDATABASE"] = str(db_name)
 
         log_file = os.path.join(
-            log_folder, 'updateMetaId_' + str(db_name) + '.log')
-        messages.addMessage('Log file will be saved to: {}'.format(log_file))
+            log_folder, "updateMetaId_" + str(db_name) + ".log")
+        messages.addMessage("Log file will be saved to: {}".format(log_file))
         return_messages = []
-        
-        update_metaid_functions = os.path.join(__location__, 'updateMetaId.sql')
-        return_msg = runcmd([psql, '-f', update_metaid_functions], my_env)
+
+        update_metaid_functions = os.path.join(__location__, "updateMetaId.sql")
+        return_msg = runcmd([psql, "-f", update_metaid_functions], my_env)
         if return_msg[1]:
             messages.addMessage(
                 "Update MetaId functions created: {}".format(return_msg[1]))
@@ -205,7 +191,7 @@ class UpdateMetaId(object):
                         for row in arcpy.da.SearchCursor(in_excel, fields)]
 
         subclasses = list(
-            filter(lambda d: d[in_type] == 'SubClass', updates_data))
+            filter(lambda d: d[in_type] == "SubClass", updates_data))
 
         if subclasses:
             for sc in subclasses:
@@ -218,7 +204,7 @@ class UpdateMetaId(object):
                         str(int(sc[in_metaid])), str(int(sc[in_classid])),
                         str(int(sc[in_new_metaid])), sc[in_name], sc[in_name])
 
-                return_msg = runcmd([psql, '-Atc', update_sql], my_env)
+                return_msg = runcmd([psql, "-Atc", update_sql], my_env)
                 if return_msg[1]:
                     messages.addMessage(
                         "SubClass MetaId update has run: {}".format(return_msg[1]))
@@ -230,7 +216,7 @@ class UpdateMetaId(object):
                     return_messages.append(
                         "SubClass MetaId update has not run: {}".format(return_msg[1]))
 
-        classes = list(filter(lambda d: d[in_type] == 'Class', updates_data))
+        classes = list(filter(lambda d: d[in_type] == "Class", updates_data))
         if classes:
             for cl in classes:
                 if cl[in_new_name] and cl[in_new_name].strip():
@@ -240,7 +226,7 @@ class UpdateMetaId(object):
                     update_sql = """SELECT * FROM update_class_metaid({0}, {1}, '{2}', '{3}')""".format(
                         str(int(cl[in_metaid])), str(int(cl[in_new_metaid])), cl[in_name], cl[in_name])
 
-                return_msg = runcmd([psql, '-Atc', update_sql], my_env)
+                return_msg = runcmd([psql, "-Atc", update_sql], my_env)
                 if return_msg[1]:
                     messages.addMessage(
                         "Class MetaId update has run: {}".format(return_msg[1]))
@@ -254,7 +240,7 @@ class UpdateMetaId(object):
 
         # Filter RelationTypes
         relation_types = list(
-            filter(lambda d: d[in_type] == 'RelationType', updates_data))
+            filter(lambda d: d[in_type] == "RelationType", updates_data))
 
         if relation_types:
             for rt in relation_types:
@@ -265,7 +251,7 @@ class UpdateMetaId(object):
                     update_sql = """SELECT * FROM update_relationtype_metaid({0}, {1}, '{2}', '{3}')""".format(
                         str(int(rt[in_metaid])), str(int(rt[in_new_metaid])), rt[in_name], rt[in_name])
 
-                return_msg = runcmd([psql, '-Atc', update_sql], my_env)
+                return_msg = runcmd([psql, "-Atc", update_sql], my_env)
                 if return_msg[1]:
                     messages.addMessage(
                         "RelationType MetaId update has run: {}".format(return_msg[1]))
@@ -279,5 +265,5 @@ class UpdateMetaId(object):
 
         with open(log_file, "w") as f:
             for msg in return_messages:
-                f.write('%s\n' % msg)
+                f.write("%s\n" % msg)
         return

@@ -95,8 +95,14 @@ class CreateGrid(object):
             endX = int(desc.extent.XMax+1)
             endY = int(desc.extent.YMax+1)
         else:
-            start = arcpy.PointGeometry(arcpy.Point(desc.extent.XMin,desc.extent.YMin),arcpy.SpatialReference(desc.spatialReference.factoryCode)).projectAs(arcpy.SpatialReference(25832))
-            end = arcpy.PointGeometry(arcpy.Point(desc.extent.XMax,desc.extent.YMax),arcpy.SpatialReference(desc.spatialReference.factoryCode)).projectAs(arcpy.SpatialReference(25832))
+            start = arcpy.PointGeometry(
+                arcpy.Point(desc.extent.XMin,desc.extent.YMin),
+                arcpy.SpatialReference(desc.spatialReference.factoryCode)
+                ).projectAs(arcpy.SpatialReference(25832))
+            end = arcpy.PointGeometry(
+                arcpy.Point(desc.extent.XMax,desc.extent.YMax),
+                arcpy.SpatialReference(desc.spatialReference.factoryCode)
+                ).projectAs(arcpy.SpatialReference(25832))
             startX = int(start.getPart(0).X)
             startY = int(start.getPart(0).Y)
             endX = int(end.getPart(0).X+1)
@@ -149,8 +155,12 @@ class CreateGrid(object):
         del row
         del cursor
         messages.addMessage("Created grid: {0}".format(out_grid))
-        arcpy.FeatureToPoint_management(in_features=out_grid, out_feature_class=out_grid_center, point_location="INSIDE")
-        messages.addMessage("Created grid center points: {0}".format(out_grid_center))
+        arcpy.FeatureToPoint_management(
+            in_features=out_grid,
+            out_feature_class=out_grid_center,
+            point_location="INSIDE")
+        messages.addMessage(
+            "Created grid center points: {0}".format(out_grid_center))
         arcpy.DeleteField_management(in_table=out_grid_center, drop_field="ORIG_FID")
         return
     

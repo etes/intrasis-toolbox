@@ -15,23 +15,23 @@ DECLARE
 BEGIN
     SELECT df."MetaId", scdf."ClassId", df."Name"
         INTO rec
-        from "Definition" df, "SubClassDef" scdf
-        where df."MetaId" = scdf."MetaId"
-        and scdf."ClassId" = "classid"
-        and df."Name" = "subclassname"
-        and df."MetaId" = "subclassid";
+        FROM "Definition" df, "SubClassDef" scdf
+        WHERE df."MetaId" = scdf."MetaId"
+        AND scdf."ClassId" = "classid"
+        AND df."Name" = "subclassname"
+        AND df."MetaId" = "subclassid";
 
-    if not found then
-     raise notice 'NOT_FOUND: SubClass % could not be found.', 
+    IF NOT FOUND THEN
+     RAISE NOTICE 'NOT_FOUND: SubClass % could not be found.', 
 	    subclassname;
-     return 'NOT_FOUND: SubClass ' || subclassname || ' with MetaId ' || subclassid || ' is not found.';
-    else
+     RETURN 'NOT_FOUND: SubClass ' || subclassname || ' with MetaId ' || subclassid || ' is not found.';
+    ELSE
         SELECT *
         INTO v_definition
-        from "Definition" df
-        where df."MetaId" = "new_metaid";
+        FROM "Definition" df
+        WHERE df."MetaId" = "new_metaid";
 
-            if not found then
+            IF NOT FOUND THEN
                 -- Get tablespace used for the SubClassDef PRIMARY KEY
                 SELECT constraint_catalog FROM information_schema.table_constraints
                     INTO tblspace
@@ -96,13 +96,13 @@ BEGIN
                         ON UPDATE NO ACTION
                         ON DELETE NO ACTION;
                 
-                raise notice 'UPDATED: SubClass % is found', rec."Name";
-                return 'UPDATED: SubClass ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
-            else
-                raise notice 'EXISTS: MetaId % already exists', v_definition."MetaId";
-                return 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists.';
-            end if;
-    end if;
+                RAISE NOTICE 'UPDATED: SubClass % is found', rec."Name";
+                RETURN 'UPDATED: SubClass ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
+            ELSE
+                RAISE NOTICE 'EXISTS: MetaId % already exists', v_definition."MetaId";
+                RETURN 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists.';
+            END IF;
+    END IF;
 COMMIT;
 END $$;
 
@@ -121,22 +121,22 @@ DECLARE
 BEGIN
     SELECT df."MetaId", df."Name"
         INTO rec
-        from "Definition" df, "ClassDef" cdf
-        where df."MetaId" = cdf."MetaId"
-        and df."Name" = "classname"
-        and df."MetaId" = "classid";
+        FROM "Definition" df, "ClassDef" cdf
+        WHERE df."MetaId" = cdf."MetaId"
+        AND df."Name" = "classname"
+        AND df."MetaId" = "classid";
 
-    if not found then
-     raise notice 'NOT_FOUND: Class % could not be found.', 
+    IF NOT FOUND THEN
+     RAISE NOTICE 'NOT_FOUND: Class % could not be found.', 
 	    classname;
-     return 'NOT_FOUND: Class ' || classname || ' with MetaId ' || classid || ' is not found.';
-    else
+     RETURN 'NOT_FOUND: Class ' || classname || ' with MetaId ' || classid || ' is not found.';
+    ELSE
         SELECT *
         INTO v_definition
-        from "Definition" df
-        where df."MetaId" = "new_metaid";
+        FROM "Definition" df
+        WHERE df."MetaId" = "new_metaid";
 
-            if not found then
+            IF NOT FOUND THEN
                 -- Get tablespace used for the ClassDef PRIMARY KEY
                 SELECT constraint_catalog FROM information_schema.table_constraints
                     INTO tblspace
@@ -235,13 +235,13 @@ BEGIN
                         ON UPDATE NO ACTION
                         ON DELETE NO ACTION;
                 
-                raise notice 'UPDATED: Class % is found', rec."Name";
-                return 'UPDATED: Class ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
-            else
-                raise notice 'EXISTS: MetaId % already exists', v_definition."MetaId";
-                return 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists.';
-            end if;
-    end if;
+                RAISE NOTICE 'UPDATED: Class % is found', rec."Name";
+                RETURN 'UPDATED: Class ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
+            ELSE
+                RAISE NOTICE 'EXISTS: MetaId % already exists', v_definition."MetaId";
+                RETURN 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists.';
+            END IF;
+    END IF;
 COMMIT;
 END $$;
 
@@ -260,22 +260,22 @@ DECLARE
 BEGIN
     SELECT df."MetaId", df."Name"
         INTO rec
-        from "Definition" df, "RelationTypeDef" rtdf
-        where df."MetaId" = rtdf."MetaId"
-        and df."Name" = "relationtypename"
-        and df."MetaId" = "relationtypeid";
+        FROM "Definition" df, "RelationTypeDef" rtdf
+        WHERE df."MetaId" = rtdf."MetaId"
+        AND df."Name" = "relationtypename"
+        AND df."MetaId" = "relationtypeid";
 
-    if not found then
-     raise notice 'NOT_FOUND: RelationType % could not be found.', 
+    IF NOT FOUND THEN
+     RAISE NOTICE 'NOT_FOUND: RelationType % could not be found.', 
 	    relationtypename;
-     return 'NOT_FOUND: RelationType ' || relationtypename || ' with MetaId ' || relationtypeid || ' is not found.';
-    else
+     RETURN 'NOT_FOUND: RelationType ' || relationtypename || ' with MetaId ' || relationtypeid || ' is not found.';
+    ELSE
         SELECT *
         INTO v_definition
-        from "Definition" df
-        where df."MetaId" = "new_metaid";
+        FROM "Definition" df
+        WHERE df."MetaId" = "new_metaid";
 
-            if not found then
+            IF NOT FOUND THEN
                 -- Get tablespace used for the RelationTypeDef PRIMARY KEY
                 SELECT constraint_catalog FROM information_schema.table_constraints
                     INTO tblspace
@@ -316,12 +316,12 @@ BEGIN
                         ON UPDATE NO ACTION
                         ON DELETE NO ACTION;
                 
-                raise notice 'UPDATED: RelationType % is found', rec."Name";
-                return 'UPDATED: RelationType ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
-            else
-                raise notice 'EXISTS: MetaId % already exists', v_definition."MetaId";
-                return 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists.';
-            end if;
-    end if;
+                RAISE NOTICE 'UPDATED: RelationType % is found', rec."Name";
+                RETURN 'UPDATED: RelationType ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
+            ELSE
+                RAISE NOTICE 'EXISTS: MetaId % already exists', v_definition."MetaId";
+                RETURN 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists.';
+            END IF;
+    END IF;
 COMMIT;
 END $$;

@@ -14,37 +14,16 @@ import os
 import sys
 import subprocess
 import csv
+from utils import runcmd
+
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
 #global variables
-#Path to psql """
-#psql = 'C:\\Program Files\\PostgreSQL\\9.6\\bin\\psql.exe'
 #set environment variables for Postgresql
 my_env = os.environ.copy()
-#my_env["PATH"] = "C:\\Program Files\\PostgreSQL\\9.6\\bin" + os.pathsep + my_env["PATH"]
 my_env["PGHOST"] = 'localhost'
 my_env["PGPORT"] = '5432'
-
-
-def runcmd(cmd, env):
-        """
-        A generic subprocess.Popen function to run a command which suppresses consoles on Windows
-        """
-        if os.name=='nt':
-            #Windows starts up a console when a subprocess is run from a non-console
-            #app like pythonw unless we pass it a flag that says not to...
-            startupinfo=subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= 1
-        else:startupinfo=None
-        proc=subprocess.Popen(cmd, env=env, startupinfo=startupinfo,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            stdin=subprocess.PIPE)
-        if os.name=='nt':proc.stdin.close()
-        stdout,stderr=proc.communicate()
-        exit_code=proc.wait()
-        return exit_code, stdout, stderr
-
 
 class UpdateCoordSys(object):
     def __init__(self):
@@ -106,7 +85,7 @@ class UpdateCoordSys(object):
             if not os.path.isfile(psql):
                 self.params[0].setErrorMessage("PostgreSQL version is invalid \
                     Please select the correct PostgreSQL version.")
-        
+
         if parameters[1].value and parameters[2].value:
             my_env["PGUSER"] = str(parameters[1].value)
             my_env["PGPASSWORD"] = str(parameters[2].value)
@@ -115,7 +94,7 @@ class UpdateCoordSys(object):
             parameters[3].filter.list = return_message[1].split()
         else:
             parameters[3].filter.list = []
-        
+
         return
 
     def updateMessages(self, parameters):
@@ -133,7 +112,7 @@ class UpdateCoordSys(object):
         db_name = parameters[3].valueAsText
 
         psql = "C:\\Program Files\\PostgreSQL\\{0}\\bin\\psql.exe".format(pg_version)
-        
+
         my_env["PGUSER"] = str(db_user)
         my_env["PGPASSWORD"] = str(db_password)
         my_env["PGDATABASE"]= str(db_name)
@@ -165,4 +144,3 @@ class UpdateCoordSys(object):
         else:
             messages.setErrorMessage("The Intrasis project does not have a valid coordinate system (SRID)")
         return
-
