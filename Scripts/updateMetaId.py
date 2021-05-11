@@ -15,6 +15,7 @@ import os
 import sys
 import subprocess
 import tempfile
+from datetime import datetime
 from utils import runcmd
 
 reload(sys)
@@ -140,7 +141,7 @@ class UpdateMetaId(object):
                 pg_version)
             if not os.path.isfile(psql):
                 parameters[0].setErrorMessage("PostgreSQL version is invalid \
-                    Please select the correct PostgreSQL version.")
+                    Please select the correct PostgreSQL version."                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    )
         return
 
     def execute(self, parameters, messages):
@@ -166,8 +167,10 @@ class UpdateMetaId(object):
         my_env["PGPASSWORD"] = str(db_password)
         my_env["PGDATABASE"] = str(db_name)
 
+        curr_time = datetime.strftime(datetime.now(), "%Y-%m-%d_%H%M%S")
         log_file = os.path.join(
-            log_folder, "updateMetaId_" + str(db_name) + ".log")
+            log_folder,
+            "updateMetaId_" + str(db_name) + "_" + curr_time + ".log")
         messages.addMessage("Log file will be saved to: {}".format(log_file))
         return_messages = []
 
