@@ -147,6 +147,7 @@ BEGIN
                 ALTER TABLE "SymbolDef" DROP CONSTRAINT fk_symboldef_classdef;
                 ALTER TABLE "RelationRule" DROP CONSTRAINT fk_relationrule_classdef;
                 ALTER TABLE "RelationRule" DROP CONSTRAINT fk_relationrule_classdef1;
+                ALTER TABLE "GeoObjectRule" DROP CONSTRAINT fk_objectdef_definition;
                 ALTER TABLE "Object" DROP CONSTRAINT fk_object_classdef;
                 ALTER TABLE "ObjectDef" DROP CONSTRAINT fk_objectdef_definition;
                 ALTER TABLE "SubClassDef" DROP CONSTRAINT fk_subclassdef_classdef;
@@ -212,6 +213,10 @@ BEGIN
                         ON DELETE NO ACTION;
                 ALTER TABLE "ObjectDef" ADD CONSTRAINT fk_objectdef_definition FOREIGN KEY ("MetaId")
                         REFERENCES public."Definition" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "GeoObjectRule" ADD CONSTRAINT fk_geoobjectrule_objectdef FOREIGN KEY ("ObjectDefId")
+                        REFERENCES public."ObjectDef" ("MetaId") MATCH SIMPLE
                         ON UPDATE NO ACTION
                         ON DELETE NO ACTION;
                 ALTER TABLE "RelationRule" ADD CONSTRAINT fk_relationrule_classdef FOREIGN KEY ("ChildId")
