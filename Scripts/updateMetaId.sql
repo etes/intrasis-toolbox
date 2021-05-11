@@ -325,3 +325,27 @@ BEGIN
     END IF;
 COMMIT;
 END $$;
+
+--DROP FUNCTION update_sequence(character varying,character varying,character varying);
+CREATE OR REPLACE FUNCTION update_sequence(
+	seq_name character varying,
+	tbl_name character varying,
+	col_name character varying)
+	RETURNS text
+	LANGUAGE plpgsql
+AS $$
+DECLARE
+    old_last_val integer;
+    new_last_val integer;
+    max_val varchar;
+BEGIN
+    EXECUTE format('SELECT last_value from %s', seq_name) INTO old_last_val;
+    -- Prevent concurrent insertions to the table while the sequence is being updated
+    EXECUTE format('LOCK TABLE "%s" IN EXCLUSIVE MODE', tbl_name);
+    -- Update the sequence's current value
+    EXECUTE format('SELECT setval(''%s'', COALESCE(MAX("%s"), 1), MAX("%s") IS NOT null) FROM "%s";', 
+        seq_name, col_name, col_name, tbl_name) INTO new_last_val;
+    EXECUTE format('SELECT MAX("%s") FROM "%s"', col_name, tbl_name) INTO max_val;
+    RETURN 'UPDATED: OLD_SQUENCE: ' || old_last_val || '; NEW_SEQUENCE: ' || new_last_val || '; MAX_MetaId: ' || max_val;
+COMMIT;
+END $$;

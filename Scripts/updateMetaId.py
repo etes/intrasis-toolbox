@@ -266,6 +266,24 @@ class UpdateMetaId(object):
                     return_messages.append(
                         "RelationType MetaId update has not run: {}".format(return_msg[1]))
 
+        # Update Definition MetaId sequence
+        update_seq_sql = """
+            SELECT * FROM update_sequence(
+            'definition_metaid_seq', 
+            'Definition', 
+            'MetaId');
+            """
+        return_msg = runcmd([psql, "-Atc", update_seq_sql], my_env)
+        if return_msg[1]:
+            messages.addMessage(
+                "Update MetaId sequence has run: {}".format(return_msg[1]))
+            return_messages.append("Update MetaId sequence has run: {}".format(
+                return_msg[1]))
+        else:
+            messages.addWarningMessage("Update MetaId sequence could not run: {}".format(
+                return_msg))
+            return_messages.append("Update MetaId sequence could not run: {}".format(
+                return_msg[1]))
         with open(log_file, "w") as f:
             for msg in return_messages:
                 f.write("%s\n" % msg)
