@@ -22,8 +22,6 @@ BEGIN
         AND df."MetaId" = "subclassid";
 
     IF NOT FOUND THEN
-     RAISE NOTICE 'NOT_FOUND: SubClass % could not be found.', 
-	    subclassname;
      RETURN 'NOT_FOUND: SubClass ' || subclassname || ' with MetaId ' || subclassid || ' is not found.';
     ELSE
         SELECT *
@@ -96,11 +94,9 @@ BEGIN
                         ON UPDATE NO ACTION
                         ON DELETE NO ACTION;
                 
-                RAISE NOTICE 'UPDATED: SubClass % is found', rec."Name";
                 RETURN 'UPDATED: SubClass ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
             ELSE
-                RAISE NOTICE 'EXISTS: MetaId % already exists', v_definition."MetaId";
-                RETURN 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists.';
+                RETURN 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists. SubClass ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' could not be updated.';
             END IF;
     END IF;
 COMMIT;
@@ -127,8 +123,6 @@ BEGIN
         AND df."MetaId" = "classid";
 
     IF NOT FOUND THEN
-     RAISE NOTICE 'NOT_FOUND: Class % could not be found.', 
-	    classname;
      RETURN 'NOT_FOUND: Class ' || classname || ' with MetaId ' || classid || ' is not found.';
     ELSE
         SELECT *
@@ -147,7 +141,7 @@ BEGIN
                 ALTER TABLE "SymbolDef" DROP CONSTRAINT fk_symboldef_classdef;
                 ALTER TABLE "RelationRule" DROP CONSTRAINT fk_relationrule_classdef;
                 ALTER TABLE "RelationRule" DROP CONSTRAINT fk_relationrule_classdef1;
-                ALTER TABLE "GeoObjectRule" DROP CONSTRAINT fk_objectdef_definition;
+                ALTER TABLE "GeoObjectRule" DROP CONSTRAINT fk_geoobjectrule_objectdef;
                 ALTER TABLE "Object" DROP CONSTRAINT fk_object_classdef;
                 ALTER TABLE "ObjectDef" DROP CONSTRAINT fk_objectdef_definition;
                 ALTER TABLE "SubClassDef" DROP CONSTRAINT fk_subclassdef_classdef;
@@ -240,11 +234,9 @@ BEGIN
                         ON UPDATE NO ACTION
                         ON DELETE NO ACTION;
                 
-                RAISE NOTICE 'UPDATED: Class % is found', rec."Name";
                 RETURN 'UPDATED: Class ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
             ELSE
-                RAISE NOTICE 'EXISTS: MetaId % already exists', v_definition."MetaId";
-                RETURN 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists.';
+                RETURN 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists. Class ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' could not be updated.';
             END IF;
     END IF;
 COMMIT;
@@ -271,8 +263,6 @@ BEGIN
         AND df."MetaId" = "relationtypeid";
 
     IF NOT FOUND THEN
-     RAISE NOTICE 'NOT_FOUND: RelationType % could not be found.', 
-	    relationtypename;
      RETURN 'NOT_FOUND: RelationType ' || relationtypename || ' with MetaId ' || relationtypeid || ' is not found.';
     ELSE
         SELECT *
@@ -321,11 +311,95 @@ BEGIN
                         ON UPDATE NO ACTION
                         ON DELETE NO ACTION;
                 
-                RAISE NOTICE 'UPDATED: RelationType % is found', rec."Name";
                 RETURN 'UPDATED: RelationType ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
             ELSE
-                RAISE NOTICE 'EXISTS: MetaId % already exists', v_definition."MetaId";
-                RETURN 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists.';
+                RETURN 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists. RelationType ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' could not be updated.';
+            END IF;
+    END IF;
+COMMIT;
+END $$;
+
+
+CREATE OR REPLACE FUNCTION update_relation_metaid(
+    relationid integer,
+    new_metaid integer,
+    relationname character varying,
+    new_name character varying)
+    RETURNS text
+    LANGUAGE plpgsql
+AS $$
+DECLARE
+    rec RECORD;
+    v_definition "Definition"%rowtype;
+    tblspace varchar;
+BEGIN
+    SELECT df."MetaId", df."Name"
+        INTO rec
+        FROM "Definition" df, "RelationDef" rdf
+        WHERE df."MetaId" = rdf."MetaId"
+        AND df."Name" = "relationname"
+        AND df."MetaId" = "relationid";
+
+    IF NOT FOUND THEN
+     RETURN 'NOT_FOUND: Relation ' || relationname || ' with MetaId ' || relationid || ' is not found.';
+    ELSE
+        SELECT *
+        INTO v_definition
+        FROM "Definition" df
+        WHERE df."MetaId" = "new_metaid";
+
+            IF NOT FOUND THEN
+                -- Get tablespace used for the RelationDef PRIMARY KEY
+                SELECT constraint_catalog FROM information_schema.table_constraints
+                    INTO tblspace
+                    WHERE constraint_type = 'PRIMARY KEY' AND table_name = 'RelationDef';
+                -- Remove Constraints
+                ALTER TABLE "DefinitionEventRel" DROP CONSTRAINT fk_definition_defintioneventrel;
+                ALTER TABLE "ObjectRel" DROP CONSTRAINT fk_objectrel_relationdef;
+                ALTER TABLE "RelationRule" DROP CONSTRAINT fk_relationrule_relationdef;
+                ALTER TABLE "RelationDef" DROP CONSTRAINT "RelationDef_pkey";
+                ALTER TABLE "RelationDef" DROP CONSTRAINT fk_relationdef_definition;
+                
+                UPDATE "Definition" SET "MetaId" = "new_metaid", "Name" = "new_name"
+                    WHERE "MetaId" = "relationid" AND "Name" = "relationname";
+                
+                UPDATE "RelationDef" SET "MetaId" = "new_metaid"
+                    WHERE "MetaId" = "relationid";
+                
+                UPDATE "RelationRule" SET "MetaId" = "new_metaid"
+                    WHERE "MetaId" = "relationid";
+                
+                UPDATE "ObjectRel" SET "MetaId" = "new_metaid"
+                    WHERE "MetaId" = "relationid";
+                
+                UPDATE "DefinitionEventRel" SET "DefinitionId" = "new_metaid"
+                    WHERE "DefinitionId" = "relationid";
+
+                --Restore removed constaints
+                EXECUTE 'ALTER TABLE "RelationDef" ADD CONSTRAINT "RelationDef_pkey"
+                            PRIMARY KEY ("MetaId") USING INDEX TABLESPACE "' || tblspace ||'";'
+                USING tblspace;
+
+                ALTER TABLE "RelationDef" ADD CONSTRAINT fk_relationdef_definition FOREIGN KEY ("MetaId")
+                        REFERENCES public."Definition" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "RelationRule" ADD CONSTRAINT fk_relationrule_relationdef FOREIGN KEY ("MetaId")
+                        REFERENCES public."RelationDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "ObjectRel" ADD CONSTRAINT fk_objectrel_relationdef FOREIGN KEY ("MetaId")
+                        REFERENCES public."RelationDef" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                ALTER TABLE "DefinitionEventRel" ADD CONSTRAINT fk_definition_defintioneventrel FOREIGN KEY ("DefinitionId")
+                        REFERENCES public."Definition" ("MetaId") MATCH SIMPLE
+                        ON UPDATE NO ACTION
+                        ON DELETE NO ACTION;
+                
+                RETURN 'UPDATED: Relation ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' is updated with new MetaId ' || "new_metaid";
+            ELSE
+                RETURN 'EXISTS: MetaId ' || v_definition."MetaId" || ' already exists. Relation ' || rec."Name" || ' with MetaId ' || rec."MetaId" || ' could not be updated.';
             END IF;
     END IF;
 COMMIT;
